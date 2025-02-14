@@ -6,7 +6,7 @@ to an outside server, all of this inside Docker in a Kubernetes
 environment. Moreover, the tracing points will be configured via a YAML
 config file. 
 
-As usual, I will set a maximum of 3 hours before closing this project,
+As usual, I will set a maximum of 3 hours before closing this project
 (excluding the time to write this document). I will not use any AI in
 the process. Hopefully I've caught your attention. Let's start.
 
@@ -36,7 +36,7 @@ wich enables CO-RE (Compile Once, Run Everywhere). This is a pretty
 cool system and I may write a future blog post digging deep into the
 inner workings of BTF. For now, you just need to know that using BTF will
 enable the program to work on any kernel version. User space
-provides eBPF programs to the kernel via the `ebp(2)` syscall, which will
+provides eBPF programs to the kernel via the `bpf(2)` syscall, which will
 verify that the program is correct (enforcing the previous limitations)
 and will proceed to JIT compile it. People have been using eBPF for
 tracing purposes. Moreover, eBPF programs can modify the kernel
