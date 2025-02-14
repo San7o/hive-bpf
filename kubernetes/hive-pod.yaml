@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hive-app
+spec:
+  restartPolicy: Never
+  containers:
+    - name: hive-container
+      image: hive-image
+      imagePullPolicy: Never
+      securityContext:
+        privileged: true
