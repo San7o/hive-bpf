@@ -12,7 +12,7 @@
 struct {
   __uint(type, BPF_MAP_TYPE_ARRAY);
   __type(key, __u32);
-  __type(value, __u64);
+  __type(value, long unsigned int);
   __uint(max_entries, MAP_MAX_ENTRIES);
 } traced_inodes SEC(".maps"); 
 

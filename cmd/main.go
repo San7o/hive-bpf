@@ -32,20 +32,24 @@ func ParseYaml() (Config, error) {
 	return config, nil
 }
 
-func GetInode(Target string) (uint64, error) {
+// Extract major and minor numbers from dev_t
+func major(dev uint64) uint32 { return uint32((dev >> 8) & 0xfff) }
+func minor(dev uint64) uint32 { return uint32((dev & 0xff)  | ((dev >> 12) & 0xfff00)) }
+
+func GetInode(Target string) (uint64, uint32, uint32, error) {
 	fd, err := syscall.Open(Target, syscall.O_RDONLY, 444)
 	if err != nil {
-		return 0, err
+		return 0, 0, 0, err
 	}
 	defer syscall.Close(fd)
 
 	var stat syscall.Stat_t
 	err = syscall.Fstat(fd, &stat)
 	if err != nil {
-		return 0, err
+		return 0, 0, 0, err
 	}
 
-	return stat.Ino, nil
+	return stat.Ino, major(stat.Dev), minor(stat.Dev), nil
 }
 
 func main() {
@@ -54,6 +58,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error ParseYaml: ", err)
 	}
+	log.Print("Targeting file: ", config.Target)
 	
 	kprobed_func := "inode_permission"
 	
@@ -74,7 +79,7 @@ func main() {
 	}
 	defer kp.Close()
 
-	ino, err := GetInode(config.Target)
+	ino, _, _, err := GetInode(config.Target)
 	if err != nil {
 		log.Fatalf("GetInode: %s", err)
 	}
