@@ -5,10 +5,15 @@ import (
 	"syscall"
 	"io/ioutil"
 	"errors"
+	"os"
+	"os/signal"
+	"bytes"
+	"encoding/binary"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/ringbuf"
 	"gopkg.in/yaml.v3"
 )
 
@@ -54,6 +59,10 @@ func GetInode(Target string) (uint64, uint32, uint32, error) {
 
 func main() {
 
+	// Subscribe to signals for terminating the program.
+	stopper := make(chan os.Signal, 1)
+	signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
+	
 	config, err := ParseYaml()
 	if err != nil {
 		log.Fatalf("Error ParseYaml: ", err)
@@ -91,7 +100,7 @@ func main() {
 		log.Fatalf("GetInode again: %s", err)
 	}
 	
-	// TODO: Add more inodes for testing
+  // Fill the map with some data
 	var key0 uint32 = 0
 	var key1 uint32 = 1
 	err = objs.TracedInodes.Update(key0, ino, ebpf.UpdateAny)
@@ -103,6 +112,48 @@ func main() {
 		log.Fatalf("Updating map: %s", err)
 	}
 
+	// Open a ringbuf reader from userspace RINGBUF map described in the
+	// eBPF C program.
+	rd, err := ringbuf.NewReader(objs.Rb)
+	if err != nil {
+		log.Fatalf("opening ringbuf reader: %s", err)
+	}
+	defer rd.Close()
+	
+	// Close the reader when the process receives a signal, which will exit
+	// the read loop.
+	go func() {
+		<-stopper
+
+		if err := rd.Close(); err != nil {
+			log.Fatalf("closing ringbuf reader: %s", err)
+		}
+	}()
+
+	var data bpfLogData
 	for {
+		record, err := rd.Read()
+		if err != nil {
+			if errors.Is(err, ringbuf.ErrClosed) {
+				log.Println("Received signal, exiting..")
+				return
+			}
+			log.Printf("reading from reader: %s", err)
+			continue
+		}
+
+		// Parse the ringbuf data entry into a logData structure.
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &data); err != nil {
+			log.Printf("parsing ringbuf data: %s", err)
+			continue
+		}
+
+		log.Printf("New event:\n")
+		log.Printf(" - pid: %d\n", data.Pid)
+		log.Printf(" - tgid: %d\n", data.Tgid)
+		log.Printf(" - uid: %d\n", data.Uid)
+		log.Printf(" - gid: %d\n", data.Gid)
+		log.Printf(" - ino: %d\n", data.Ino)
+		log.Printf(" - mask: %d\n", data.Mask)
 	}
 }

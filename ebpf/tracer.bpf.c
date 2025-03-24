@@ -3,6 +3,7 @@
 
 #include "vmlinux.h"
 #include "maps.h"
+#include "log_data.h"
 #include "license.h"
 
 #include <bpf/bpf_helpers.h>
@@ -15,14 +16,16 @@ void check(const long unsigned int* ino, const int* mask, const __u32 i) {
 	if (valp && *valp == *ino) {
 		__u64 pid_tgid = bpf_get_current_pid_tgid();
 		__u64 uid_gid = bpf_get_current_uid_gid();
-			
-		pid_t pid = pid_tgid >> 32;
-		gid_t tgid = (gid_t) pid_tgid;
-		uid_t uid = uid_gid >> 32;
-		gid_t gid = (gid_t) uid_gid;
-			
-		bpf_printk("{pid:%d,tgid:%d,uid:%d,gid:%d,ino:%ld,mask:%d}",
-							 pid, tgid, uid, gid, *ino, *mask);
+
+		struct log_data data;
+		data.pid = pid_tgid >> 32;
+		data.tgid = (gid_t) pid_tgid;
+		data.uid = uid_gid >> 32;
+		data.gid = (gid_t) uid_gid;
+		data.ino = *ino;
+		data.mask = *mask;
+		
+		bpf_ringbuf_output(&rb, &data, sizeof(struct log_data), 0);
 	}
 	return;
 }
