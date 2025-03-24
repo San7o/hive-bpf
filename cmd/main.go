@@ -86,8 +86,19 @@ func main() {
 
 	log.Print("Opened file with inode number ", ino)
 
-	var key uint32 = 0
-	err = objs.TracedInodes.Update(key, ino, ebpf.UpdateAny)
+	ino2, _, _, err := GetInode("LICENSE")
+	if err != nil {
+		log.Fatalf("GetInode again: %s", err)
+	}
+	
+	// TODO: Add more inodes for testing
+	var key0 uint32 = 0
+	var key1 uint32 = 1
+	err = objs.TracedInodes.Update(key0, ino, ebpf.UpdateAny)
+	if err != nil {
+		log.Fatalf("Updating map: %s", err)
+	}
+	err = objs.TracedInodes.Update(key1, ino2, ebpf.UpdateAny)
 	if err != nil {
 		log.Fatalf("Updating map: %s", err)
 	}

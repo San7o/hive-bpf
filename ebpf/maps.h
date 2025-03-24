@@ -7,7 +7,7 @@
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 
-#define MAP_MAX_ENTRIES 1
+#define MAP_MAX_ENTRIES 1024
 
 struct {
   __uint(type, BPF_MAP_TYPE_ARRAY);
